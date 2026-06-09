@@ -95,6 +95,7 @@ class _RutaSeguraState extends State<RutaSegura> {
   StreamSubscription? _notifSub;
   StreamSubscription? _msgSub;
   StreamSubscription? _pagoSub;
+  StreamSubscription? _syncSub;
 
   @override
   void initState() {
@@ -112,6 +113,12 @@ class _RutaSeguraState extends State<RutaSegura> {
     });
     _pagoSub = WebSocketService().on('solicitud_pago').listen((payload) {
       _showPagoBottomSheet(payload);
+    });
+    _syncSub = OfflineQueueService().sincronizadoStream.listen((result) {
+      final detalle = result.labels.length == 1
+          ? result.labels.first
+          : '${result.sincronizados} acciones sincronizadas';
+      _showSnack('✅ Conexión restaurada', detalle);
     });
   }
 
@@ -166,6 +173,7 @@ class _RutaSeguraState extends State<RutaSegura> {
     _notifSub?.cancel();
     _msgSub?.cancel();
     _pagoSub?.cancel();
+    _syncSub?.cancel();
     super.dispose();
   }
 
@@ -286,7 +294,7 @@ class _SplashRouterState extends State<_SplashRouter> {
             NotificacionService().inicializar(context).ignore();
           }
           WebSocketService().conectar();
-          OfflineQueueService().init().then((_) => OfflineQueueService().sincronizar());
+          OfflineQueueService().init().then((_) => OfflineQueueService().probarYSincronizar());
           return const DashboardPage();
         }
         return const IniciarSesionPage();

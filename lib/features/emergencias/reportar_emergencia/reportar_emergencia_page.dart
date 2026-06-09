@@ -5,6 +5,7 @@ import 'package:taller_movil/core/theme/app_colors.dart';
 import 'package:taller_movil/services/vehiculo_service.dart';
 import 'package:taller_movil/services/emergencia_service.dart';
 import 'package:taller_movil/services/api_helper.dart';
+import 'package:taller_movil/services/offline_queue_service.dart';
 import 'package:taller_movil/features/emergencias/enviar_ubicacion/enviar_ubicacion_page.dart';
 
 // CU05 - Reportar Emergencia
@@ -61,6 +62,26 @@ class _ReportarEmergenciaPageState extends State<ReportarEmergenciaPage> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() { _loading = true; _error = ''; });
+
+    final offlineSvc = OfflineQueueService();
+    if (!offlineSvc.isOnline) {
+      final body = <String, dynamic>{
+        'vehiculo_id': _vehiculoId!,
+        'prioridad': _prioridad,
+      };
+      if (_descCtrl.text.trim().isNotEmpty) body['descripcion'] = _descCtrl.text.trim();
+      await offlineSvc.encolar('/api/emergencias/', 'POST', body, 'Reportar emergencia');
+      setState(() { _loading = false; });
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: Color(0xFF92400E),
+        duration: Duration(seconds: 5),
+        content: Text('Sin conexión — la emergencia se enviará al reconectarse.'),
+      ));
+      return;
+    }
+
     try {
       final incidente = await _emergenciaSvc.crearIncidente(
         vehiculoId:  _vehiculoId!,
@@ -68,7 +89,6 @@ class _ReportarEmergenciaPageState extends State<ReportarEmergenciaPage> {
         prioridad:   _prioridad,
       );
       if (!mounted) return;
-      // Navegar a enviar ubicación pasando el id del incidente creado
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(

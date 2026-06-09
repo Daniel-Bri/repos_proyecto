@@ -38,17 +38,34 @@ class OfflineAction {
   );
 }
 
+class SyncResult {
+  final int sincronizados;
+  final List<String> labels;
+  const SyncResult({required this.sincronizados, required this.labels});
+}
+
 class OfflineQueueService extends ChangeNotifier {
   static final OfflineQueueService _instance = OfflineQueueService._();
   factory OfflineQueueService() => _instance;
   OfflineQueueService._();
 
   static const _key = 'rutasegura_offline_queue';
+  // Backoff: 5s → 10s → 20s → 40s → 60s (se repite en 60s)
+  static const _retryDelays = [5, 10, 20, 40, 60];
+
   final _auth = AuthService();
   List<OfflineAction> _queue = [];
   bool _sincronizando = false;
+  bool _isOnline = true;
+  int _retryCount = 0;
+  Timer? _retryTimer;
+
+  final _sincronizadoCtrl = StreamController<SyncResult>.broadcast();
+  Stream<SyncResult> get sincronizadoStream => _sincronizadoCtrl.stream;
 
   int get pendientes => _queue.length;
+  bool get isOnline => _isOnline;
+  bool get isSincronizando => _sincronizando;
   List<OfflineAction> get queue => List.unmodifiable(_queue);
 
   Future<void> init() async {
@@ -79,9 +96,44 @@ class OfflineQueueService extends ChangeNotifier {
     debugPrint('[OfflineQueue] Encolado: $label (total: ${_queue.length})');
   }
 
+  /// Llamado desde servicios HTTP cuando se detecta un SocketException
+  void marcarOffline() {
+    if (_isOnline) {
+      _isOnline = false;
+      notifyListeners();
+      _programarRetry();
+    }
+  }
+
+  Future<bool> probarConectividad() async {
+    try {
+      final res = await http
+          .head(Uri.parse('${AppConfig.baseUrl}/'))
+          .timeout(const Duration(seconds: 5));
+      return res.statusCode < 500;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> probarYSincronizar() async {
+    final alcanzable = await probarConectividad();
+    if (_isOnline != alcanzable) {
+      _isOnline = alcanzable;
+      notifyListeners();
+    }
+    if (alcanzable) {
+      _retryCount = 0;
+      await sincronizar();
+    } else {
+      _programarRetry();
+    }
+  }
+
   Future<void> sincronizar() async {
-    if (_sincronizando || _queue.isEmpty) return;
+    if (_sincronizando || _queue.isEmpty || !_isOnline) return;
     _sincronizando = true;
+    notifyListeners();
 
     final token = await _auth.getToken();
     final headers = {
@@ -90,36 +142,76 @@ class OfflineQueueService extends ChangeNotifier {
     };
 
     final pendientes = [..._queue];
+    final labels = <String>[];
+    int sincronizados = 0;
+    bool falloRed = false;
+
     for (final action in pendientes) {
       try {
         final url = Uri.parse('${AppConfig.baseUrl}${action.endpoint}');
         http.Response res;
         if (action.method == 'POST') {
-          res = await http.post(url, headers: headers, body: jsonEncode(action.body));
+          res = await http.post(url, headers: headers, body: jsonEncode(action.body))
+              .timeout(const Duration(seconds: 10));
         } else if (action.method == 'PATCH') {
-          res = await http.patch(url, headers: headers, body: jsonEncode(action.body));
+          res = await http.patch(url, headers: headers, body: jsonEncode(action.body))
+              .timeout(const Duration(seconds: 10));
         } else {
-          res = await http.put(url, headers: headers, body: jsonEncode(action.body));
+          res = await http.put(url, headers: headers, body: jsonEncode(action.body))
+              .timeout(const Duration(seconds: 10));
         }
+
         if (res.statusCode >= 200 && res.statusCode < 400) {
+          labels.add(action.label);
+          sincronizados++;
           _queue.removeWhere((a) => a.id == action.id);
           await _guardar();
           notifyListeners();
           debugPrint('[OfflineQueue] Sincronizado: ${action.label}');
+        } else if (res.statusCode >= 400 && res.statusCode < 500) {
+          // Error del cliente — acción inválida, descartar y continuar
+          _queue.removeWhere((a) => a.id == action.id);
+          await _guardar();
+          notifyListeners();
         } else {
+          // Error servidor (5xx) — parar y reintentar con backoff
+          falloRed = true;
           break;
         }
       } catch (e) {
-        debugPrint('[OfflineQueue] Error sincronizando: $e');
+        // SocketException / timeout — sin red
+        debugPrint('[OfflineQueue] Error de red: $e');
+        falloRed = true;
         break;
       }
     }
 
     _sincronizando = false;
+    notifyListeners();
+
+    if (sincronizados > 0) {
+      _sincronizadoCtrl.add(SyncResult(sincronizados: sincronizados, labels: labels));
+    }
+
+    if (falloRed) {
+      _isOnline = false;
+      notifyListeners();
+      _programarRetry();
+    }
+  }
+
+  void _programarRetry() {
+    if (_queue.isEmpty) return;
+    _retryTimer?.cancel();
+    final delaySecs = _retryDelays[_retryCount.clamp(0, _retryDelays.length - 1)];
+    _retryCount++;
+    debugPrint('[OfflineQueue] Próximo reintento en ${delaySecs}s (intento #$_retryCount)');
+    _retryTimer = Timer(Duration(seconds: delaySecs), () => probarYSincronizar());
   }
 
   void limpiar() async {
     _queue.clear();
+    _retryTimer?.cancel();
     await _guardar();
     notifyListeners();
   }

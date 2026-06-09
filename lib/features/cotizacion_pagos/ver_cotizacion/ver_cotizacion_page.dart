@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:taller_movil/core/theme/app_colors.dart';
 import 'package:taller_movil/services/emergencia_service.dart';
 import 'package:taller_movil/services/api_helper.dart';
+import 'package:taller_movil/services/offline_queue_service.dart';
 import 'package:taller_movil/shared/app_drawer.dart';
 
 class VerCotizacionPage extends StatefulWidget {
@@ -41,6 +42,29 @@ class _VerCotizacionPageState extends State<VerCotizacionPage> {
   }
 
   Future<void> _responder(int cotizacionId, String estado) async {
+    final offlineSvc = OfflineQueueService();
+    if (!offlineSvc.isOnline) {
+      await offlineSvc.encolar(
+        '/api/pagos/cotizaciones/$cotizacionId/estado',
+        'PATCH',
+        {'estado': estado},
+        estado == 'aceptada' ? 'Aceptar cotización' : 'Rechazar cotización',
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: estado == 'aceptada' ? AppColors.success : AppColors.danger,
+          content: Text(
+            estado == 'aceptada'
+                ? 'Sin conexión — se aceptará al reconectarse.'
+                : 'Sin conexión — se rechazará al reconectarse.',
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+          ),
+        ));
+      }
+      return;
+    }
+
     try {
       await _svc.responderCotizacion(cotizacionId: cotizacionId, estado: estado);
       if (!mounted) return;

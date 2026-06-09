@@ -5,6 +5,7 @@ import 'package:taller_movil/core/theme/app_colors.dart';
 import 'package:taller_movil/services/emergencia_service.dart';
 import 'package:taller_movil/services/pago_stripe_service.dart';
 import 'package:taller_movil/services/api_helper.dart';
+import 'package:taller_movil/services/offline_queue_service.dart';
 
 /// CU20 – Cliente realiza el pago de una cotización aceptada.
 /// Puede navegar con arguments: cotizacion_id (int) para pre-seleccionar.
@@ -68,6 +69,28 @@ class _RealizarPagoPageState extends State<RealizarPagoPage> {
 
   Future<void> _pagar() async {
     if (_cotizacionSeleccionada == null) return;
+
+    final offlineSvc = OfflineQueueService();
+    if (!offlineSvc.isOnline) {
+      if (_metodo == 'tarjeta') {
+        setState(() { _error = 'El pago con tarjeta requiere conexión a internet.'; });
+        return;
+      }
+      // Efectivo se puede encolar
+      await offlineSvc.encolar(
+        '/api/pagos/pagos', 'POST',
+        {'cotizacion_id': _cotizacionSeleccionada!, 'metodo': 'efectivo'},
+        'Pago en efectivo',
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: Color(0xFF92400E),
+        duration: Duration(seconds: 5),
+        content: Text('Sin conexión — el pago en efectivo se registrará al reconectarse.'),
+      ));
+      return;
+    }
 
     if (_metodo == 'tarjeta') {
       await _pagarConTarjeta();

@@ -5,6 +5,7 @@ import 'package:taller_movil/core/theme/app_colors.dart';
 import 'package:taller_movil/services/emergencia_service.dart';
 import 'package:taller_movil/services/taller_service.dart';
 import 'package:taller_movil/services/api_helper.dart';
+import 'package:taller_movil/services/offline_queue_service.dart';
 import 'package:taller_movil/services/solicitud_candidatos_service.dart';
 
 /// CU10 – Ver estado de solicitud (mis incidentes, taller, ETA, actualización periódica).
@@ -75,6 +76,22 @@ class _VerEstadoSolicitudPageState extends State<VerEstadoSolicitudPage> {
   }
 
   Future<void> _confirmarLlegada(int asignacionId) async {
+    final offlineSvc = OfflineQueueService();
+    if (!offlineSvc.isOnline) {
+      await offlineSvc.encolar(
+        '/api/talleres/asignaciones/$asignacionId/confirmar-llegada',
+        'PATCH', {}, 'Verificar llegada del técnico',
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Color(0xFF92400E),
+          content: Text('Sin conexión — se confirmará al reconectarse.'),
+        ));
+      }
+      return;
+    }
+
     setState(() => _confirmando.add(asignacionId));
     try {
       await _tallerSvc.confirmarLlegadaTecnico(asignacionId);
