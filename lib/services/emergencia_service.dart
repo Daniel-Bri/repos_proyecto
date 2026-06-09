@@ -39,7 +39,7 @@ class EmergenciaService {
     String? descripcion,
     String prioridad = 'media',
   }) async {
-    final res = await http.post(
+    final res = await safePost(
       Uri.parse('$_baseUrl/'),          // barra final para evitar redirect 307
       headers: await _authHeaders(),
       body: jsonEncode({
@@ -61,7 +61,7 @@ class EmergenciaService {
     required double latitud,
     required double longitud,
   }) async {
-    final res = await http.patch(
+    final res = await safePatch(
       Uri.parse('$_baseUrl/$incidenteId/ubicacion'),
       headers: await _authHeaders(),
       body: jsonEncode({'latitud': latitud, 'longitud': longitud}),
@@ -75,7 +75,7 @@ class EmergenciaService {
 
   // Listar incidentes del usuario
   Future<List<Map<String, dynamic>>> listarMisIncidentes() async {
-    final res = await http.get(
+    final res = await safeGet(
       Uri.parse('$_baseUrl/mis-incidentes'),
       headers: await _authHeaders(),
     );
@@ -109,7 +109,7 @@ class EmergenciaService {
         contentType: ct,
       ),
     );
-    final streamed = await request.send();
+    final streamed = await safeSend(request);
     final res = await http.Response.fromStream(streamed);
     if (res.statusCode == 201) {
       return jsonDecode(res.body) as Map<String, dynamic>;
@@ -143,7 +143,7 @@ class EmergenciaService {
     request.files.add(http.MultipartFile.fromBytes('file', bytes,
         filename: fn, contentType: ct));
 
-    final streamed = await request.send();
+    final streamed = await safeSend(request);
     final res = await http.Response.fromStream(streamed);
     if (res.statusCode == 201) return jsonDecode(res.body) as Map<String, dynamic>;
     if (res.statusCode == 401 || res.statusCode == 403) throw TokenExpiradoException();
@@ -158,7 +158,7 @@ class EmergenciaService {
     required int incidenteId,
     required String descripcion,
   }) async {
-    final res = await http.patch(
+    final res = await safePatch(
       Uri.parse('$_baseUrl/$incidenteId/descripcion'),
       headers: await _authHeaders(),
       body: jsonEncode({'descripcion': descripcion}),
@@ -182,7 +182,7 @@ class EmergenciaService {
     if (latitud != null) body['latitud'] = latitud;
     if (longitud != null) body['longitud'] = longitud;
 
-    final res = await http.post(
+    final res = await safePost(
       Uri.parse('$_baseUrl/sos'),
       headers: await _authHeaders(),
       body: jsonEncode(body),
@@ -197,7 +197,7 @@ class EmergenciaService {
 
   /// CU10 – Incidente + asignación + URLs de fotos.
   Future<List<Map<String, dynamic>>> listarMisSolicitudes() async {
-    final res = await http.get(
+    final res = await safeGet(
       Uri.parse('$_baseUrl/mis-solicitudes'),
       headers: await _authHeaders(),
     );
@@ -212,7 +212,7 @@ class EmergenciaService {
 
   /// CU11 – Cliente cancela su incidente.
   Future<Map<String, dynamic>> cancelarSolicitud(int incidenteId) async {
-    final res = await http.patch(
+    final res = await safePatch(
       Uri.parse('${AppConfig.baseUrl}/api/solicitudes/$incidenteId/cancelar'),
       headers: await _authHeaders(),
       body: jsonEncode({}),
@@ -227,7 +227,7 @@ class EmergenciaService {
 
   /// CU29 – Historial de servicios (cliente y taller).
   Future<List<Map<String, dynamic>>> listarHistorial() async {
-    final res = await http.get(
+    final res = await safeGet(
       Uri.parse('${AppConfig.baseUrl}/api/reportes/historial'),
       headers: await _authHeaders(),
     );
@@ -243,7 +243,7 @@ class EmergenciaService {
     required int cotizacionId,
     required String metodo,
   }) async {
-    final res = await http.post(
+    final res = await safePost(
       Uri.parse('${AppConfig.baseUrl}/api/pagos/pagos'),
       headers: await _authHeaders(),
       body: jsonEncode({'cotizacion_id': cotizacionId, 'metodo': metodo}),
@@ -258,7 +258,7 @@ class EmergenciaService {
 
   /// CU20 – Listar cotizaciones del cliente (para pago).
   Future<List<Map<String, dynamic>>> listarMisCotizaciones() async {
-    final res = await http.get(
+    final res = await safeGet(
       Uri.parse('${AppConfig.baseUrl}/api/pagos/mis-cotizaciones'),
       headers: await _authHeaders(),
     );
@@ -274,7 +274,7 @@ class EmergenciaService {
     required int cotizacionId,
     required String estado, // "aceptada" | "rechazada"
   }) async {
-    final res = await http.patch(
+    final res = await safePatch(
       Uri.parse('${AppConfig.baseUrl}/api/pagos/cotizaciones/$cotizacionId/estado'),
       headers: await _authHeaders(),
       body: jsonEncode({'estado': estado}),

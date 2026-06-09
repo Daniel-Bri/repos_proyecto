@@ -20,7 +20,7 @@ class SolicitudTallerService {
   }
 
   Future<List<Map<String, dynamic>>> listarDisponibles() async {
-    final res = await http.get(Uri.parse('$_base/disponibles'), headers: await _headers());
+    final res = await safeGet(Uri.parse('$_base/disponibles'), headers: await _headers());
     verificarRespuesta(res);
     return (jsonDecode(res.body) as List).cast<Map<String, dynamic>>();
   }
@@ -29,7 +29,7 @@ class SolicitudTallerService {
   Future<AsignacionModel> aceptar(int incidenteId, {int? etaMinutos}) async {
     final body = <String, dynamic>{};
     if (etaMinutos != null && etaMinutos > 0) body['eta'] = etaMinutos;
-    final res = await http.patch(
+    final res = await safePatch(
       Uri.parse('$_base/$incidenteId/aceptar'),
       headers: await _headers(),
       body: jsonEncode(body),

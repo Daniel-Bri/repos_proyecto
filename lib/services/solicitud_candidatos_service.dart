@@ -16,7 +16,7 @@ class SolicitudCandidatosService {
   }
 
   Future<List<Map<String, dynamic>>> listar(int incidenteId) async {
-    final res = await http.get(
+    final res = await safeGet(
       Uri.parse('${AppConfig.baseUrl}/api/solicitudes/$incidenteId/talleres-candidatos'),
       headers: await _authHeaders(),
     );

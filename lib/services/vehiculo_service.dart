@@ -25,7 +25,7 @@ class VehiculoService {
     required String color,
     String? numeroSeguro,
   }) async {
-    final res = await http.post(
+    final res = await safePost(
       Uri.parse('$_baseUrl/vehiculos'),
       headers: await _authHeaders(),
       body: jsonEncode({
@@ -43,7 +43,7 @@ class VehiculoService {
 
   // ── CU04 - Listar Vehículos ───────────────────────────────
   Future<List<Map<String, dynamic>>> listarVehiculos() async {
-    final res = await http.get(
+    final res = await safeGet(
       Uri.parse('$_baseUrl/vehiculos'),
       headers: await _authHeaders(),
     );
@@ -67,7 +67,7 @@ class VehiculoService {
       'anio': ?anio,
       'color': ?color,
     };
-    final res = await http.patch(
+    final res = await safePatch(
       Uri.parse('$_baseUrl/vehiculos/$id'),
       headers: await _authHeaders(),
       body: jsonEncode(body),
@@ -78,7 +78,7 @@ class VehiculoService {
 
   // ── Eliminar Vehículo ────────────────────────────────────
   Future<void> eliminarVehiculo(int id) async {
-    final res = await http.delete(
+    final res = await safeDelete(
       Uri.parse('$_baseUrl/vehiculos/$id'),
       headers: await _authHeaders(),
     );
@@ -102,7 +102,7 @@ class VehiculoService {
       'latitud': ?latitud,
       'longitud': ?longitud,
     };
-    final res = await http.post(
+    final res = await safePost(
       Uri.parse('$_baseUrl/talleres'),
       headers: await _authHeaders(),
       body: jsonEncode(body),

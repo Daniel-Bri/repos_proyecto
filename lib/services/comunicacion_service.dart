@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:taller_movil/core/config/app_config.dart';
 import 'package:http/http.dart' as http;
 import 'auth_service.dart';
+import 'api_helper.dart';
 
 class UbicacionTecnicoModel {
   final int tecnicoId;
@@ -86,7 +87,7 @@ class ComunicacionService {
     required double latitud,
     required double longitud,
   }) async {
-    final res = await http.patch(
+    final res = await safePatch(
       Uri.parse('$_baseUrl/tecnicos/mi-ubicacion'),
       headers: await _headers(),
       body: jsonEncode({'latitud': latitud, 'longitud': longitud}),
@@ -101,7 +102,7 @@ class ComunicacionService {
 
   // CU17 — Cliente: obtiene la posición actual del técnico asignado
   Future<UbicacionTecnicoModel> obtenerUbicacionTecnico(int asignacionId) async {
-    final res = await http.get(
+    final res = await safeGet(
       Uri.parse('$_baseUrl/asignaciones/$asignacionId/tecnico-ubicacion'),
       headers: await _headers(),
     );
@@ -121,7 +122,7 @@ class ComunicacionService {
     required int asignacionId,
     required String contenido,
   }) async {
-    final res = await http.post(
+    final res = await safePost(
       Uri.parse('$_baseUrl/mensajes'),
       headers: await _headers(),
       body: jsonEncode({'asignacion_id': asignacionId, 'contenido': contenido}),
@@ -137,7 +138,7 @@ class ComunicacionService {
 
   // CU18 — Listar mensajes de una asignación
   Future<List<MensajeModel>> listarMensajes(int asignacionId) async {
-    final res = await http.get(
+    final res = await safeGet(
       Uri.parse('$_baseUrl/asignaciones/$asignacionId/mensajes'),
       headers: await _headers(),
     );

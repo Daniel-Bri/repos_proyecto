@@ -18,7 +18,7 @@ class PagoStripeService {
 
   /// CU40 – Crea el PaymentIntent en Stripe y devuelve el client_secret.
   Future<Map<String, dynamic>> crearIntent(int cotizacionId) async {
-    final res = await http.post(
+    final res = await safePost(
       Uri.parse('$_base/stripe/intent'),
       headers: await _headers(),
       body: jsonEncode({'cotizacion_id': cotizacionId}),
@@ -33,7 +33,7 @@ class PagoStripeService {
     int cotizacionId,
     String paymentIntentId,
   ) async {
-    final res = await http.post(
+    final res = await safePost(
       Uri.parse('$_base/stripe/confirmar'),
       headers: await _headers(),
       body: jsonEncode({

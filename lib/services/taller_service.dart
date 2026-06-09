@@ -99,7 +99,7 @@ class TallerService {
 
   // ── CU18 · Asignaciones activas del cliente (para chat) ──
   Future<List<AsignacionModel>> listarMisAsignacionesCliente() async {
-    final res = await http.get(
+    final res = await safeGet(
       Uri.parse('${AppConfig.baseUrl}/api/solicitudes/mis-asignaciones'),
       headers: await _headers(),
     );
@@ -110,7 +110,7 @@ class TallerService {
 
   // ── CU15 · Asignaciones activas ─────────────────────────
   Future<List<AsignacionModel>> listarAsignacionesActivas() async {
-    final res = await http.get(
+    final res = await safeGet(
       Uri.parse('$_baseUrl/asignaciones/activas'),
       headers: await _headers(),
     );
@@ -121,7 +121,7 @@ class TallerService {
 
   // ── CU22 · Asignaciones listas para cierre ──────────────
   Future<List<AsignacionModel>> listarAsignacionesListas() async {
-    final res = await http.get(
+    final res = await safeGet(
       Uri.parse('$_baseUrl/servicios/listas'),
       headers: await _headers(),
     );
@@ -145,7 +145,7 @@ class TallerService {
       if (observaciones != null && observaciones.isNotEmpty)
         'observaciones': observaciones,
     };
-    final res = await http.post(
+    final res = await safePost(
       Uri.parse('$_baseUrl/servicios'),
       headers: await _headers(),
       body: jsonEncode(body),
@@ -156,7 +156,7 @@ class TallerService {
 
   // ── CU22 · Historial de servicios realizados ─────────────
   Future<List<ServicioRealizadoModel>> listarServiciosRealizados() async {
-    final res = await http.get(
+    final res = await safeGet(
       Uri.parse('$_baseUrl/servicios'),
       headers: await _headers(),
     );
@@ -174,7 +174,7 @@ class TallerService {
     final body = <String, dynamic>{'estado': nuevoEstado};
     if (observacion != null && observacion.isNotEmpty) body['observacion'] = observacion;
 
-    final res = await http.patch(
+    final res = await safePatch(
       Uri.parse('$_baseUrl/asignaciones/$asignacionId/estado'),
       headers: await _headers(),
       body: jsonEncode(body),
@@ -185,7 +185,7 @@ class TallerService {
 
   // CU16 – Taller rechaza su asignación para un incidente
   Future<Map<String, dynamic>> rechazarSolicitud(int incidenteId) async {
-    final res = await http.patch(
+    final res = await safePatch(
       Uri.parse('${AppConfig.baseUrl}/api/solicitudes/$incidenteId/rechazar'),
       headers: await _headers(),
       body: jsonEncode({}),
@@ -200,7 +200,7 @@ class TallerService {
 
   // CU31 – Confirmar llegada del técnico (cliente)
   Future<AsignacionModel> confirmarLlegadaTecnico(int asignacionId) async {
-    final res = await http.patch(
+    final res = await safePatch(
       Uri.parse('$_baseUrl/asignaciones/$asignacionId/confirmar-llegada'),
       headers: await _headers(),
       body: jsonEncode({}),

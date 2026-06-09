@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:http/http.dart' as http;
 import 'package:taller_movil/core/config/app_config.dart';
+import 'package:taller_movil/services/api_helper.dart';
 import 'package:taller_movil/services/auth_service.dart';
 
 // Handler de mensajes en background (debe ser función top-level)
@@ -131,7 +132,7 @@ class NotificacionService {
     if (_token == null) return;
     try {
       final t = await _auth.getToken();
-      await http.delete(
+      await safeDelete(
         Uri.parse('${AppConfig.baseUrl}/api/notificaciones/token'),
         headers: {
           'Content-Type': 'application/json',
@@ -151,7 +152,7 @@ class NotificacionService {
     try {
       final t = await _auth.getToken();
       if (t == null) return; // usuario no autenticado aún
-      await http.post(
+      await safePost(
         Uri.parse('${AppConfig.baseUrl}/api/notificaciones/token'),
         headers: {
           'Content-Type': 'application/json',

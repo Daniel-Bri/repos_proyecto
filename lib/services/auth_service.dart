@@ -1,7 +1,7 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:taller_movil/core/config/app_config.dart';
+import 'api_helper.dart';
 
 class AuthService {
   static final _baseUrl = '${AppConfig.baseUrl}/api/acceso';
@@ -10,7 +10,7 @@ class AuthService {
 
   // ── CU02 - Iniciar sesión ────────────────────────────────
   Future<Map<String, dynamic>> login(String email, String password) async {
-    final res = await http.post(
+    final res = await safePost(
       Uri.parse('$_baseUrl/login'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'email': email, 'password': password}),
@@ -39,7 +39,7 @@ class AuthService {
       if (fullName != null && fullName.isNotEmpty) 'full_name': fullName,
       if (telefono != null && telefono.isNotEmpty) 'telefono': telefono,
     };
-    final res = await http.post(
+    final res = await safePost(
       Uri.parse('$_baseUrl/register'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode(body),
@@ -55,7 +55,7 @@ class AuthService {
 
   Future<void> changePassword(String currentPassword, String newPassword) async {
     final token = await getToken();
-    final res = await http.post(
+    final res = await safePost(
       Uri.parse('$_baseUrl/change-password'),
       headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
       body: jsonEncode({'current_password': currentPassword, 'new_password': newPassword}),
@@ -67,7 +67,7 @@ class AuthService {
   }
 
   Future<void> requestReset(String email) async {
-    final res = await http.post(
+    final res = await safePost(
       Uri.parse('$_baseUrl/request-reset'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'email': email}),
@@ -79,7 +79,7 @@ class AuthService {
   }
 
   Future<void> resetPassword(String email, String code, String newPassword) async {
-    final res = await http.post(
+    final res = await safePost(
       Uri.parse('$_baseUrl/reset-password'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'email': email, 'code': code, 'new_password': newPassword}),
